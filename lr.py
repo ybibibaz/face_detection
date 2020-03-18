@@ -79,7 +79,6 @@ class ConvNet(nn.Module):
             nn.MaxPool2d((2, 2), stride=(2, 2)),
             nn.ReLU()
         )
-        self.drop_out = nn.Dropout()
         self.linear1 = nn.Sequential(
             nn.Linear(18750 * 1, 10000), #умножаем на размер бача
             nn.Dropout(0.2),
@@ -122,7 +121,6 @@ class ConvNet(nn.Module):
         output = self.conv2(output)
         output = self.conv3(output)
         output = output.view(-1)
-        output = self.drop_out(output)
         output = self.linear1(output)
         output = self.linear2(output)
         output = self.linear3(output)
