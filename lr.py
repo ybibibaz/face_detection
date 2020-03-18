@@ -7,10 +7,11 @@ from PIL import Image
 import time
 import cv2
 
-
+#constant block
 num_epochs = 5
 batch_size = 1
 lr = 0.02
+#function for image shaping
 transform = transforms.Compose([
     transforms.Resize((200, 200)),
     transforms.ToTensor(),
@@ -19,28 +20,29 @@ transform = transforms.Compose([
 ])
 
 
+#dataset class
 class FaceDataset(Dataset):
     def __init__(self, transform):
-
       self.transform = transform
       self.labels = []
       self.images = []
-
+      #path to labels file
       f = open("D:\soft\PyCharmCommunityEdition2019.2.3\pycharmprojects\project\datoset\list_bbox_celeba.txt", "r")
-
       i = 0
       for line in f:
-        if(i > 20):  #меняем для количества фоток
+        #i - number of images for dataset
+        if(i > 30):
           break
         l = line.replace("  ", ' ').replace("  ", " ").replace('\n', '').split(' ')
         filename = l[0]
         try:
+              #path to images folder
               with Image.open("D:/soft/PyCharmCommunityEdition2019.2.3/pycharmprojects/project/datoset/img_celeba/" + filename) as image:
                   img = self.transform(image.copy())
                   self.images.append(img)
-
+              l[2] = l[0] + l[2]
+              l[3] = l[1] + l[3]
               self.labels.append(np.array(list(map(int, l[1::]))))
-
               i += 1
         except:
           print('Could not load image:', filename)
@@ -56,10 +58,12 @@ class FaceDataset(Dataset):
         return X, Y
 
 
+#dataset creation
 dataset = FaceDataset(transform)
 data_loader = DataLoader(dataset=dataset, shuffle=False, batch_size=batch_size)
 
 
+#nn class
 class ConvNet(nn.Module):
     def __init__(self):
         super().__init__()
@@ -80,7 +84,7 @@ class ConvNet(nn.Module):
             nn.ReLU()
         )
         self.linear1 = nn.Sequential(
-            nn.Linear(18750 * 1, 10000), #умножаем на размер бача
+            nn.Linear(18750 * 1, 10000),
             nn.Dropout(0.2),
             nn.ReLU()
         )
@@ -130,6 +134,8 @@ class ConvNet(nn.Module):
         output = self.linear7(output)
         return output
 
+
+#magic
 model = ConvNet()
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 criterion = nn.MSELoss()
@@ -152,8 +158,9 @@ for epoch in range(num_epochs):
         loss.backward()
         optimizer.step()
     print('epoch %d, loss %.4f' % (epoch, train_loss / i))
-    print('текущее время обучения: ' + str(time.time() - start_time))
+    print('current learning time: ' + str(time.time() - start_time))
 
 
-print('время обучения: ' + str(time.time() - start_time))
+print('learning time: ' + str(time.time() - start_time))
+#path where to save model
 torch.save(model.state_dict(), 'D:/soft/PyCharmCommunityEdition2019.2.3/pycharmprojects/project/' + 'conv_net_model.ckpt')
