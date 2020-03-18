@@ -8,7 +8,7 @@ import time
 import cv2
 
 
-num_epochs = 10
+num_epochs = 5
 batch_size = 1
 lr = 0.02
 transform = transforms.Compose([
@@ -30,7 +30,7 @@ class FaceDataset(Dataset):
 
       i = 0
       for line in f:
-        if(i > 500):  #меняем для количества фоток
+        if(i > 20):  #меняем для количества фоток
           break
         l = line.replace("  ", ' ').replace("  ", " ").replace('\n', '').split(' ')
         filename = l[0]
@@ -79,6 +79,7 @@ class ConvNet(nn.Module):
             nn.MaxPool2d((2, 2), stride=(2, 2)),
             nn.ReLU()
         )
+        self.drop_out = nn.Dropout()
         self.linear1 = nn.Sequential(
             nn.Linear(18750 * 1, 10000), #умножаем на размер бача
             nn.Dropout(0.2),
@@ -119,16 +120,9 @@ class ConvNet(nn.Module):
     def forward(self, x):
         output = self.conv1(x)
         output = self.conv2(output)
-
-
-
-
-
-
-
-
         output = self.conv3(output)
         output = output.view(-1)
+        output = self.drop_out(output)
         output = self.linear1(output)
         output = self.linear2(output)
         output = self.linear3(output)
