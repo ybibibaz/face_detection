@@ -1,7 +1,8 @@
+import cv2
 import torch
 import torch.nn as nn
-from PIL import Image, ImageDraw
 from torchvision import transforms
+from PIL import Image
 
 
 transform = transforms.Compose([
@@ -80,18 +81,24 @@ class ConvNet(nn.Module):
 
 model = ConvNet()
 #model path
-model.load_state_dict(torch.load('path'))
+model.load_state_dict(torch.load('D:\soft\PyCharmCommunityEdition2019.2.3\pycharmprojects\project\conv_net_model.ckpt'))
 model.eval()
-#path to image
-test_img = Image.open("path")
-width, height = test_img.size
-test_img = transform(test_img)
-test_img.resize_(1, 3, 200, 200)
-coord = model(test_img)
-coord = coord.detach().numpy()
-coord = labels_resize_back(coord, width, height)
-#same path to image
-out_img = Image.open("path")
-draw_img = ImageDraw.Draw(out_img)
-draw_img.rectangle(coord, fill=None, outline='#ff0000', width=0)
-out_img.show()
+cap = cv2.VideoCapture('test.mp4')
+while(cap.isOpened()):
+  ret, frame = cap.read()
+  if not ret:
+      raise ValueError("unable to load Image")
+  img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+  im_pil = Image.fromarray(img)
+  width, height = im_pil.size
+  im_pil = transform(im_pil)
+  im_pil.resize_(1, 3, 200, 200)
+  coord = model(im_pil)
+  coord = coord.detach().numpy()
+  coord = labels_resize_back(coord, width, height)
+  frame = cv2.rectangle(frame, (coord[0], coord[1]), (coord[2], coord[3]), (0, 0, 255))
+  cv2.imshow('video', frame)
+  if (cv2.waitKey(1) & 0xFF == ord('q')):
+      break
+cap.release()
+cv2.destroyAllWindows()
