@@ -7,9 +7,10 @@ from PIL import Image
 import time
 
 #constant block
-num_epochs = 10
+num_epochs = 5
 batch_size = 1
 lr = 0.001
+f = open("D:\soft\PyCharmCommunityEdition2019.2.3\pycharmprojects\project\datoset\list_bbox_celeba.txt", "r")
 #function for image shaping
 transform = transforms.Compose([
     transforms.Resize((200, 200)),
@@ -17,6 +18,28 @@ transform = transforms.Compose([
     transforms.Normalize([0.5, 0.5, 0.5],
                          [0.5, 0.5, 0.5])
 ])
+
+
+def get_overlap_area(a, b):
+    width = min(a[2], b[2]) - max(a[0], b[0])
+    height = min(a[3], b[3]) - max(a[1], b[1])
+
+    if width > 0 and height > 0:
+        return width * height
+    else:
+        return 0
+
+
+def get_counter_value(a, b):
+    overlap_area = get_overlap_area(a, b)
+    area_a = (a[2] - a[0]) * (a[3] - a[1])
+    area_b = (b[2] - b[0]) * (b[3] - b[1])
+    union_area = area_a + area_b - overlap_area
+
+    if ((overlap_area != 0) and (overlap_area / union_area > 0.7)):
+        return 1
+    else:
+        return 0
 
 
 def labels_resize(a, width, height):
@@ -28,16 +51,16 @@ def labels_resize(a, width, height):
 
 #dataset class
 class FaceDataset(Dataset):
-    def __init__(self, transform):
+    def __init__(self, transform, file):
       self.transform = transform
       self.labels = []
       self.images = []
+      self.file = file
       #path to labels file
-      f = open("D:\soft\PyCharmCommunityEdition2019.2.3\pycharmprojects\project\datoset\list_bbox_celeba.txt", "r")
       i = 0
       for line in f:
         #i - number of images for dataset
-        if(i > 1000):
+        if(i >= 100):
           break
         l = line.replace('\n', '').split(' ')
         filename = l[0]
@@ -56,7 +79,6 @@ class FaceDataset(Dataset):
         except:
           print('Could not load image:', filename)
           break
-      f.close()
 
     def __len__(self):
         return len(self.images)
@@ -68,8 +90,11 @@ class FaceDataset(Dataset):
 
 
 #dataset creation
-dataset = FaceDataset(transform)
-data_loader = DataLoader(dataset=dataset, shuffle=False, batch_size=batch_size)
+train_dataset = FaceDataset(transform, f)
+test_dataset = FaceDataset(transform, f)
+train_loader = DataLoader(dataset=train_dataset, shuffle=False, batch_size=batch_size)
+test_loader = DataLoader(dataset=test_dataset, shuffle=False, batch_size=batch_size)
+f.close()
 
 
 #nn class
@@ -139,10 +164,10 @@ start_time = time.time()
 for epoch in range(num_epochs):
     train_loss = 0
     i = 0
-    if(epoch % 20 == 0):
-      lr /= 5
+    if((epoch + 1) % 5 == 0):
+      lr /= 2
       optimizer.param_groups[0]['lr'] = lr
-    for x, y in data_loader:
+    for x, y in train_loader:
         optimizer.zero_grad()
         output = model(x)
         loss = criterion(y, output)
@@ -153,13 +178,20 @@ for epoch in range(num_epochs):
         train_loss += loss.item()
         loss.backward()
         optimizer.step()
-        if (i % 100 == 0):
-            print('loss: ', train_loss / i)
-            print('current learning time: ' + str(time.time() - start_time))
-            torch.save(model.state_dict(),
-                       'D:/soft/PyCharmCommunityEdition2019.2.3/pycharmprojects/project/' + 'conv_net_model.ckpt')
     print('epoch %d, loss %.4f' % (epoch, train_loss / i))
     print('current learning time: ' + str(time.time() - start_time))
-
-
+    torch.save(model.state_dict(),
+               'D:/soft/PyCharmCommunityEdition2019.2.3/pycharmprojects/project/' + 'conv_net_model.ckpt')
 print('learning time: ' + str(time.time() - start_time))
+
+
+model.eval()
+with torch.no_grad():
+    correct = 0
+    total = 0
+    for images, labels in test_loader:
+        outputs = model(images)
+        total += 1
+        correct += get_counter_value(outputs.detach().numpy(), np.reshape(labels.detach().numpy(), 4))
+
+    print('Test Accuracy of the model on the', test_loader.__len__(), 'test images: {} %'.format((correct / total) * 100))
