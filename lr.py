@@ -5,11 +5,14 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 from PIL import Image
 import time
+import matplotlib.pyplot as plt
+
 
 #constant block
-num_epochs = 5
+num_epochs = 10
 batch_size = 1
 lr = 0.001
+default_face_size = 10101
 f = open("D:\soft\PyCharmCommunityEdition2019.2.3\pycharmprojects\project\datoset\list_bbox_celeba.txt", "r")
 #function for image shaping
 transform = transforms.Compose([
@@ -36,7 +39,7 @@ def get_counter_value(a, b):
     area_b = (b[2] - b[0]) * (b[3] - b[1])
     union_area = area_a + area_b - overlap_area
 
-    if ((overlap_area != 0) and (overlap_area / union_area > 0.7)):
+    if (overlap_area != 0) and (overlap_area / union_area > 0.7):
         return 1
     else:
         return 0
@@ -49,6 +52,11 @@ def labels_resize(a, width, height):
     a[3] = round(a[3] * (200 / height))
 
 
+def face_size_fix(bbox):
+    bbox = bbox.numpy()
+    return default_face_size / ((bbox[0][2] - bbox[0][0]) * (bbox[0][3] - bbox[0][1]))
+
+
 #dataset class
 class FaceDataset(Dataset):
     def __init__(self, transform, file):
@@ -58,9 +66,9 @@ class FaceDataset(Dataset):
       self.file = file
       #path to labels file
       i = 0
-      for line in f:
+      for line in file:
         #i - number of images for dataset
-        if(i >= 100):
+        if i >= 1000:
           break
         l = line.replace('\n', '').split(' ')
         filename = l[0]
@@ -161,27 +169,37 @@ model = ConvNet()
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 criterion = nn.MSELoss()
 start_time = time.time()
+loss_list = []
+acc_list = []
+total = 0
+correct = 0
 for epoch in range(num_epochs):
     train_loss = 0
     i = 0
-    if((epoch + 1) % 5 == 0):
+    if (epoch + 1) % 10 == 0:
       lr /= 2
       optimizer.param_groups[0]['lr'] = lr
-    for x, y in train_loader:
+    for images, labels in train_loader:
         optimizer.zero_grad()
-        output = model(x)
-        loss = criterion(y, output)
-        del(x)
-        del(y)
-        del(output)
+        output = model(images)
+        loss = face_size_fix(labels) * criterion(labels, output)
+        loss_list.append(loss.item())
+
         i += 1
+
         train_loss += loss.item()
         loss.backward()
         optimizer.step()
-    print('epoch %d, loss %.4f' % (epoch, train_loss / i))
+
+        total += 1
+        correct += get_counter_value(output.detach().numpy(), np.reshape(labels.detach().numpy(), 4))
+        acc_list.append(correct / total)
+
+    print('epoch %d, loss %.4f' % (epoch + 1, train_loss / i))
     print('current learning time: ' + str(time.time() - start_time))
     torch.save(model.state_dict(),
                'D:/soft/PyCharmCommunityEdition2019.2.3/pycharmprojects/project/' + 'conv_net_model.ckpt')
+
 print('learning time: ' + str(time.time() - start_time))
 
 
@@ -194,4 +212,11 @@ with torch.no_grad():
         total += 1
         correct += get_counter_value(outputs.detach().numpy(), np.reshape(labels.detach().numpy(), 4))
 
-    print('Test Accuracy of the model on the', test_loader.__len__(), 'test images: {} %'.format((correct / total) * 100))
+    print('Test Accuracy of the model on the', test_loader.__len__(), 'test images: {} %'.format(correct / total * 100))
+fig, axes = plt.subplots(1, 2)
+axes[0].plot(loss_list)
+axes[0].set_title('loss')
+axes[1].plot(acc_list)
+axes[1].set_title('correct / total')
+plt.annotate(s='accuracy on test loader: {} %'.format(correct / total * 100), xy=(0, -0.01))
+plt.show()
