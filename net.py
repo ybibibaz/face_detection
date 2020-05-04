@@ -27,37 +27,37 @@ class ConvNet(nn.Module):
         self.conv1 = nn.Sequential(
             nn.Conv2d(3, 10, (3, 3), padding=1),
             nn.MaxPool2d((2, 2), stride=(2, 2)),
-            nn.ReLU()
+            nn.LeakyReLU()
         )
         self.conv2 = nn.Sequential(
             nn.Conv2d(10, 20, (3, 3), padding=1),
             nn.MaxPool2d((2, 2), stride=(2, 2)),
-            nn.ReLU()
+            nn.LeakyReLU()
         )
         self.conv3 = nn.Sequential(
             nn.Conv2d(20, 30, (3, 3), padding=1),
             nn.MaxPool2d((2, 2), stride=(2, 2)),
-            nn.ReLU()
+            nn.LeakyReLU()
         )
         self.conv4 = nn.Sequential(
             nn.Conv2d(30, 64, (3, 3), padding=1),
             nn.MaxPool2d((2, 2), stride=(2, 2)),
-            nn.ReLU()
+            nn.LeakyReLU()
         )
         self.linear1 = nn.Sequential(
             nn.Linear(9216, 2048),
             nn.Dropout(0.5),
-            nn.ReLU()
+            nn.LeakyReLU()
         )
         self.linear2 = nn.Sequential(
             nn.Linear(2048, 512),
             nn.Dropout(0.5),
-            nn.ReLU()
+            nn.LeakyReLU()
         )
         self.linear3 = nn.Sequential(
             nn.Linear(512, 100),
             nn.Dropout(0.5),
-            nn.ReLU()
+            nn.LeakyReLU()
         )
 
         self.linear4 = nn.Sequential(
@@ -80,10 +80,10 @@ class ConvNet(nn.Module):
 
 model = ConvNet()
 #model path
-model.load_state_dict(torch.load('path'))
+model.load_state_dict(torch.load('D:/soft\PyCharmCommunityEdition2019.2.3\pycharmprojects\project/100_500.ckpt'))
 model.eval()
 #path to image
-test_img = Image.open("path")
+test_img = Image.open("D:\Загрузки\убермем/социалко.jpg")
 width, height = test_img.size
 test_img = transform(test_img)
 test_img.resize_(1, 3, 200, 200)
@@ -91,7 +91,7 @@ coord = model(test_img)
 coord = coord.detach().numpy()
 coord = labels_resize_back(coord, width, height)
 #same path to image
-out_img = Image.open("path")
+out_img = Image.open("D:\Загрузки\убермем/социалко.jpg")
 draw_img = ImageDraw.Draw(out_img)
 draw_img.rectangle(coord, fill=None, outline='#ff0000', width=0)
 out_img.show()
