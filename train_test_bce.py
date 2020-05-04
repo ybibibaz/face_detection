@@ -12,7 +12,6 @@ import matplotlib.pyplot as plt
 num_epochs = 100
 batch_size = 1
 lr = 0.00001
-default_face_size = 10101
 f = open("D:\soft\PyCharmCommunityEdition2019.2.3\pycharmprojects\project\datoset\list_bbox_celeba.txt", "r")
 #function for image shaping
 transform = transforms.Compose([
@@ -50,11 +49,6 @@ def labels_resize(a, width, height):
     a[1] = a[1] * (200 / height) / 200
     a[2] = a[2] * (200 / width) / 200
     a[3] = a[3] * (200 / height) / 200
-
-
-def face_size_fix(bbox):
-    bbox = bbox.numpy()
-    return default_face_size / ((bbox[0][2] - bbox[0][0]) * (bbox[0][3] - bbox[0][1]))
 
 
 #dataset class
@@ -176,8 +170,6 @@ for epoch in range(num_epochs):
         optimizer.zero_grad()
         output = model(images)
         labels.resize_([4])
-        #output.resize_(1, 4)
-        print(labels, output)
         loss = criterion(output, labels.float())
         loss_list.append(loss.item())
 
