@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 
 #constant block
-num_epochs = 100
+num_epochs = 10
 batch_size = 1
 lr = 0.00001
 f = open("D:\soft\PyCharmCommunityEdition2019.2.3\pycharmprojects\project\datoset\list_bbox_celeba.txt", "r")
@@ -45,11 +45,11 @@ def get_counter_value(a, b):
 
 
 def labels_resize(a, width, height):
-    a[0] = a[0] * (200 / width) / 200
-    a[1] = a[1] * (200 / height) / 200
-    a[2] = a[2] * (200 / width) / 200
-    a[3] = a[3] * (200 / height) / 200
-
+    a[0] = a[0] / width
+    a[1] = a[1] / height
+    a[2] = a[2] / width
+    a[3] = a[3] / height
+    return a
 
 #dataset class
 class FaceDataset(Dataset):
@@ -62,7 +62,7 @@ class FaceDataset(Dataset):
       i = 0
       for line in file:
         #i - number of images for dataset
-        if i >= 1000:
+        if i >= 1:
           break
         l = line.replace('\n', '').split(' ')
         filename = l[0]
@@ -75,7 +75,7 @@ class FaceDataset(Dataset):
               l = list(map(int, l[1::]))
               l[2] = l[0] + l[2]
               l[3] = l[1] + l[3]
-              labels_resize(l, width, height)
+              l = labels_resize(l, width, height)
               self.labels.append(np.array(l))
               i += 1
         except:
@@ -200,7 +200,7 @@ with torch.no_grad():
         total += 1
         correct += get_counter_value(outputs.detach().numpy(), np.reshape(labels.detach().numpy(), 4))
 
-    print('Test Accuracy of the model on the', test_loader.__len__(), 'test images: {} %'.format(correct / total * 100))
+    print('Test Accuracy of the model on', test_loader.__len__(), 'test images: {} %'.format(correct / total * 100))
 fig, axes = plt.subplots(1, 2)
 axes[0].plot(loss_list)
 axes[0].set_title('loss')
