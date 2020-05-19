@@ -14,10 +14,10 @@ transform = transforms.Compose([
 
 
 def labels_resize_back(a, width, height):
-    a[0] = round(a[0] / (200 / width))
-    a[1] = round(a[1] / (200 / height))
-    a[2] = round(a[2] / (200 / width))
-    a[3] = round(a[3] / (200 / height))
+    a[0] = round(a[0] * width)
+    a[1] = round(a[1] * height)
+    a[2] = round(a[2] * width)
+    a[3] = round(a[3] * height)
     return a
 
 
@@ -56,14 +56,8 @@ class ConvNet(nn.Module):
             nn.LeakyReLU()
         )
         self.linear3 = nn.Sequential(
-            nn.Linear(512, 100),
-            nn.Dropout(0.5),
-            nn.LeakyReLU()
-        )
-
-        self.linear4 = nn.Sequential(
-            nn.Linear(100, 4),
-
+            nn.Linear(512, 4),
+            nn.Sigmoid()
         )
 
     def forward(self, x):
@@ -75,13 +69,12 @@ class ConvNet(nn.Module):
         output = self.linear1(output)
         output = self.linear2(output)
         output = self.linear3(output)
-        output = self.linear4(output)
         return output
 
 
 model = ConvNet()
 #model path
-model.load_state_dict(torch.load('D:\soft\PyCharmCommunityEdition2019.2.3\pycharmprojects\project/10_1000.ckpt'))
+model.load_state_dict(torch.load('D:\soft\PyCharmCommunityEdition2019.2.3\pycharmprojects\project/10_10000.ckpt'))
 model.eval()
 cap = cv2.VideoCapture('test.mp4')
 while cap.isOpened():
