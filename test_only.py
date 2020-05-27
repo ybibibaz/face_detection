@@ -1,12 +1,10 @@
 import numpy as np
 from torchvision import transforms
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 from PIL import Image
-import time
-import matplotlib.pyplot as plt
 from ConvNet import ConvNet
+import xlwt
 
 
 #constant block
@@ -21,6 +19,11 @@ transform = transforms.Compose([
     transforms.Normalize([0.5, 0.5, 0.5],
                          [0.5, 0.5, 0.5])
 ])
+
+
+pic_count = 100
+book = xlwt.Workbook()
+sheet1 = book.add_sheet("Sheet1")
 
 
 def get_overlap_area(a, b):
@@ -55,11 +58,11 @@ def get_counter_value(a, b):
 
 
 def labels_resize(a, width, height):
-    a[0] = a[0] / width
-    a[1] = a[1] / height
-    a[2] = a[2] / width
-    a[3] = a[3] / height
-    return a
+    a[0] = a[0] * (200 / width) / 200
+    a[1] = a[1] * (200 / height) / 200
+    a[2] = a[2] * (200 / width) / 200
+    a[3] = a[3] * (200 / height) / 200
+
 
 #dataset class
 class FaceDataset(Dataset):
@@ -68,12 +71,16 @@ class FaceDataset(Dataset):
       self.labels = []
       self.images = []
       self.file = file
+      self.names = []
       #path to labels file
       i = 0
       for line in file:
         #i - number of images for dataset
-        if i >= 1:
-          break
+        if i >= 10000 + pic_count:
+            break
+        if i < 10000:
+            i += 1
+            continue
         l = line.replace('\n', '').split(' ')
         filename = l[0]
         try:
@@ -82,15 +89,16 @@ class FaceDataset(Dataset):
                   width, height = image.size
                   img = self.transform(image.copy())
                   self.images.append(img)
+                  self.names.append(filename)
               l = list(map(int, l[1::]))
               l[2] = l[0] + l[2]
               l[3] = l[1] + l[3]
-              l = labels_resize(l, width, height)
+              labels_resize(l, width, height)
               self.labels.append(np.array(l))
               i += 1
         except:
-          print('Could not load image:', filename)
-          break
+              print('Could not load image:', filename)
+              break
 
     def __len__(self):
         return len(self.images)
@@ -102,67 +110,24 @@ class FaceDataset(Dataset):
 
 
 #dataset creation
-train_dataset = FaceDataset(transform, f)
 test_dataset = FaceDataset(transform, f)
-train_loader = DataLoader(dataset=train_dataset, shuffle=False, batch_size=batch_size)
 test_loader = DataLoader(dataset=test_dataset, shuffle=False, batch_size=batch_size)
 f.close()
 
 
-#magic
 model = ConvNet()
-optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-criterion = nn.BCELoss()
-start_time = time.time()
-loss_list = []
-acc_list = []
-total = 0
-correct = 0
-for epoch in range(num_epochs):
-    train_loss = 0
-    i = 0
-    if (epoch + 1) % 75 == 0:
-      lr /= 2
-      optimizer.param_groups[0]['lr'] = lr
-    for images, labels in train_loader:
-        optimizer.zero_grad()
-        output = model(images)
-        labels.resize_([4])
-        loss = criterion(output, labels.float())
-        loss_list.append(loss.item())
-
-        i += 1
-
-        train_loss += loss.item()
-        loss.backward()
-        optimizer.step()
-
-        total += 1
-        correct += get_counter_value(output.detach().numpy(), np.reshape(labels.detach().numpy(), 4))
-        acc_list.append(correct / total)
-
-    print('epoch %d, loss %.4f' % (epoch + 1, train_loss / i))
-    print('current learning time: ' + str(time.time() - start_time))
-    torch.save(model.state_dict(),
-               'D:/soft/PyCharmCommunityEdition2019.2.3/pycharmprojects/project/' + 'conv_net_model.ckpt')
-
-print('learning time: ' + str(time.time() - start_time))
-
-
+model.load_state_dict(torch.load('D:/soft\PyCharmCommunityEdition2019.2.3\pycharmprojects\project/10_10000.ckpt'))
 model.eval()
 with torch.no_grad():
     correct = 0
     total = 0
     for images, labels in test_loader:
         outputs = model(images)
+        row = sheet1.row(total)
+        row.write(0, test_dataset.names[total])
+        row.write(1, criterion(outputs.detach().numpy(), np.reshape(labels.detach().numpy(), 4)))
         total += 1
         correct += get_counter_value(outputs.detach().numpy(), np.reshape(labels.detach().numpy(), 4))
 
     print('Test Accuracy of the model on', test_loader.__len__(), 'test images: {} %'.format(correct / total * 100))
-fig, axes = plt.subplots(1, 2)
-axes[0].plot(loss_list)
-axes[0].set_title('loss')
-axes[1].plot(acc_list)
-axes[1].set_title('correct / total')
-plt.annotate(s='accuracy on test loader: {} %'.format(correct / total * 100), xy=(0, -0.01))
-plt.show()
+book.save("stuff/test.xls")
